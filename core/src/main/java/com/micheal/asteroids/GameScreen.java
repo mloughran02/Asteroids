@@ -101,7 +101,7 @@ public class GameScreen implements Screen {
                 playerY = Gdx.graphics.getHeight() / 2f - playerTexture.getHeight() / 2f;
                 velocityX = 0;
                 velocityY = 0;
-                break; // optional: only handle 1 hit at a time
+                break;
             }
         }
         //Bullet Hit Detection
@@ -180,7 +180,7 @@ public class GameScreen implements Screen {
             velocityY += MathUtils.sin(radians) * thrustPower * delta;
         }
 
-// Reverse thrust
+        // Reverse thrust
         if (Gdx.input.isKeyPressed(Input.Keys.DOWN)) {
             float radians = (angle + 90) * MathUtils.degreesToRadians;
             velocityX -= MathUtils.cos(radians) * thrustPower * delta;
