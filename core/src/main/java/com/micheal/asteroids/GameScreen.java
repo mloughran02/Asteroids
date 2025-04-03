@@ -5,6 +5,7 @@ import com.badlogic.gdx.Input;
 import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.Texture;
+import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.math.MathUtils;
 import java.util.ArrayList;
@@ -24,6 +25,8 @@ public class GameScreen implements Screen {
     private float drag = 0.98f; // 1 = no drag, closer to 0 = more friction
 
     private float playerRadius;
+    private int score = 0;
+    private BitmapFont font;
 
     private Texture bulletTexture;
     private List<Bullet> bullets;
@@ -43,6 +46,7 @@ public class GameScreen implements Screen {
 
     @Override
     public void show() {
+        font = new BitmapFont();
         batch = new SpriteBatch();
         playerTexture = new Texture(Gdx.files.internal("player.png"));
 
@@ -62,6 +66,7 @@ public class GameScreen implements Screen {
         for (int i = 0; i < 5; i++) {
             asteroids.add(new Asteroid(asteroidTexture, Gdx.graphics.getWidth(), Gdx.graphics.getHeight()));
         }
+
 
     }
 
@@ -116,6 +121,7 @@ public class GameScreen implements Screen {
                     asteroidsToRemove.add(asteroid);
                     bulletsToRemove.add(bullet);
                     System.out.println("Asteroid destroyed!");
+                    score++;
                 }
             }
         }
@@ -144,7 +150,7 @@ public class GameScreen implements Screen {
             bullet.render(batch);
         }
 
-
+        font.draw(batch, "Score:"+score, 100, 100);
         batch.draw(
             playerTexture,
             playerX, playerY,
