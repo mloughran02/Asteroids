@@ -1,6 +1,5 @@
 package com.micheal.asteroids;
 
-import com.badlogic.gdx.Game;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
 import com.badlogic.gdx.Screen;
@@ -14,7 +13,7 @@ public class GameOverScreen implements Screen {
     private SpriteBatch batch;
     private BitmapFont font;
 
-    private int finalScore;
+    private final int finalScore;
 
     public GameOverScreen(AsteroidsGame game, int score) {
         this.game = game;
