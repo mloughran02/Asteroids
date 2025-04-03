@@ -22,8 +22,6 @@ public class GameScreen implements Screen {
     private float playerX, playerY;
     private float angle; // in degrees
 
-    private float drag = 0.98f; // 1 = no drag, closer to 0 = more friction
-
     private float playerRadius;
     private int score = 0;
     private int lives = 3;
@@ -31,18 +29,11 @@ public class GameScreen implements Screen {
 
     private Texture bulletTexture;
     private List<Bullet> bullets;
-    private float shootCooldown = 0.3f; // Seconds between shots
     private float shootTimer = 0f;
 
 
     private float velocityX = 0;
     private float velocityY = 0;
-
-    private float rotationSpeed = 180f; // degrees per second
-    private float thrustPower = 1000f;
-
-    public GameScreen(AsteroidsGame game) {
-    }
 
     @Override
     public void show() {
@@ -90,6 +81,8 @@ public class GameScreen implements Screen {
         playerY += velocityY * delta;
 
         // Apply drag to slow down over time
+        // 1 = no drag, closer to 0 = more friction
+        float drag = 0.98f;
         velocityX *= drag;
         velocityY *= drag;
 
@@ -97,7 +90,7 @@ public class GameScreen implements Screen {
         for (Asteroid a : asteroids) {
             a.update(delta);
         }
-        //Asteroid collision deteciotns
+        //Asteroid collision detections
         for (Asteroid asteroid : asteroids) {
             if (asteroid.collidesWith(playerX + playerTexture.getWidth() / 2f, playerY + playerTexture.getHeight() / 2f, playerRadius)) {
                 System.out.println("Player hit an asteroid!");
@@ -175,6 +168,8 @@ public class GameScreen implements Screen {
 
     private void handleInput(float delta) {
         // Rotate left
+        // degrees per second
+        float rotationSpeed = 180f;
         if (Gdx.input.isKeyPressed(Input.Keys.LEFT)) {
             angle += rotationSpeed * delta;
         }
@@ -185,6 +180,7 @@ public class GameScreen implements Screen {
         }
 
         // Thrust forward
+        float thrustPower = 1000f;
         if (Gdx.input.isKeyPressed(Input.Keys.UP)) {
             float radians = (angle + 90) * MathUtils.degreesToRadians;
             velocityX += MathUtils.cos(radians) * thrustPower * delta;
@@ -203,7 +199,8 @@ public class GameScreen implements Screen {
             float bulletX = playerX + playerTexture.getWidth() / 2f - bulletTexture.getWidth() / 2f;
             float bulletY = playerY + playerTexture.getHeight() / 2f - bulletTexture.getHeight() / 2f;
             bullets.add(new Bullet(bulletTexture, bulletX, bulletY, angle));
-            shootTimer = shootCooldown;
+            // Seconds between shots
+            shootTimer = 0.3f;
         }
     }
 
