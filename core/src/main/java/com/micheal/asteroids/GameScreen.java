@@ -1,5 +1,6 @@
 package com.micheal.asteroids;
 
+import com.badlogic.gdx.Game;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
 import com.badlogic.gdx.Screen;
@@ -14,7 +15,6 @@ import java.util.List;
 
 public class GameScreen implements Screen {
 
-    private final AsteroidsGame game;
     private SpriteBatch batch;
     private Texture asteroidTexture;
     private List<Asteroid> asteroids;
@@ -26,11 +26,12 @@ public class GameScreen implements Screen {
 
     private float playerRadius;
     private int score = 0;
+    private int lives = 3;
     private BitmapFont font;
 
     private Texture bulletTexture;
     private List<Bullet> bullets;
-    private float shootCooldown = 0.2f; // Seconds between shots
+    private float shootCooldown = 0.3f; // Seconds between shots
     private float shootTimer = 0f;
 
 
@@ -41,7 +42,6 @@ public class GameScreen implements Screen {
     private float thrustPower = 1000f;
 
     public GameScreen(AsteroidsGame game) {
-        this.game = game;
     }
 
     @Override
@@ -100,14 +100,19 @@ public class GameScreen implements Screen {
         //Asteroid collision deteciotns
         for (Asteroid asteroid : asteroids) {
             if (asteroid.collidesWith(playerX + playerTexture.getWidth() / 2f, playerY + playerTexture.getHeight() / 2f, playerRadius)) {
-                System.out.println("BOOM! Player hit an asteroid!");
+                System.out.println("Player hit an asteroid!");
                 // Temporary response: reset position
                 playerX = Gdx.graphics.getWidth() / 2f - playerTexture.getWidth() / 2f;
                 playerY = Gdx.graphics.getHeight() / 2f - playerTexture.getHeight() / 2f;
                 velocityX = 0;
                 velocityY = 0;
+                lives--;
                 break;
             }
+        }
+        if (lives <= 0) {
+            // Transition to the GameOverScreen
+            ((Game) Gdx.app.getApplicationListener()).setScreen(new GameOverScreen((AsteroidsGame) Gdx.app.getApplicationListener(), score));
         }
         //Bullet Hit Detection
         List<Asteroid> asteroidsToRemove = new ArrayList<>();
