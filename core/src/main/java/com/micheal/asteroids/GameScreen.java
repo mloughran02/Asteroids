@@ -9,21 +9,21 @@ import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.math.MathUtils;
+
 import java.util.ArrayList;
 import java.util.List;
 
-
 public class GameScreen implements Screen {
 
+    private MPU6050Reader mpuReader;
     private SpriteBatch batch;
     private Texture asteroidTexture;
     private List<Asteroid> asteroids;
     private Texture playerTexture;
     private float playerX, playerY;
-    private float angle; // in degrees
+    private float angle;
 
-    private float drag = 0.98f; // 1 = no drag, closer to 0 = more friction
-
+    private float drag = 0.98f;
     private float playerRadius;
     private int score = 0;
     private int lives = 3;
@@ -31,43 +31,49 @@ public class GameScreen implements Screen {
 
     private Texture bulletTexture;
     private List<Bullet> bullets;
-    private float shootCooldown = 0.3f; // Seconds between shots
+    private float shootCooldown = 0.3f;
     private float shootTimer = 0f;
-
 
     private float velocityX = 0;
     private float velocityY = 0;
 
-    private float rotationSpeed = 180f; // degrees per second
+    private float rotationSpeed = 180f;
     private float thrustPower = 1000f;
 
+    // Wave system
+    private int wave = 1;
+    private int startingAsteroids = 5;
+    private boolean waveCleared = false;
+
+    private AsteroidsGame game;
+
     public GameScreen(AsteroidsGame game) {
+        this.game = game;
     }
 
     @Override
     public void show() {
+        mpuReader = new MPU6050Reader("COM6", 115200);
         font = new BitmapFont();
         batch = new SpriteBatch();
         playerTexture = new Texture(Gdx.files.internal("player.png"));
-
         playerX = Gdx.graphics.getWidth() / 2f - playerTexture.getWidth() / 2f;
         playerY = Gdx.graphics.getHeight() / 2f - playerTexture.getHeight() / 2f;
-
         asteroidTexture = new Texture(Gdx.files.internal("asteroid.png"));
         asteroids = new ArrayList<>();
-
         playerRadius = playerTexture.getWidth() / 2f;
-
         bulletTexture = new Texture(Gdx.files.internal("bullet.png"));
         bullets = new ArrayList<>();
 
+        spawnAsteroids(startingAsteroids);
+    }
 
-        // Spawn asteroids
-        for (int i = 0; i < 5; i++) {
-            asteroids.add(new Asteroid(asteroidTexture, Gdx.graphics.getWidth(), Gdx.graphics.getHeight()));
+    private void spawnAsteroids(int count) {
+        for (int i = 0; i < count; i++) {
+            float x = MathUtils.random(0, Gdx.graphics.getWidth());
+            float y = MathUtils.random(0, Gdx.graphics.getHeight());
+            asteroids.add(new Asteroid(asteroidTexture));
         }
-
-
     }
 
     @Override
@@ -80,16 +86,11 @@ public class GameScreen implements Screen {
         for (Bullet bullet : bullets) {
             bullet.update(delta);
         }
-
-        // Remove inactive bullets
         bullets.removeIf(bullet -> !bullet.active);
 
-
-        // Update position based on velocity
+        // Update player position
         playerX += velocityX * delta;
         playerY += velocityY * delta;
-
-        // Apply drag to slow down over time
         velocityX *= drag;
         velocityY *= drag;
 
@@ -97,27 +98,27 @@ public class GameScreen implements Screen {
         for (Asteroid a : asteroids) {
             a.update(delta);
         }
-        //Asteroid collision deteciotns
+
+        // Player-asteroid collision
+        List<Asteroid> asteroidsToRemove = new ArrayList<>();
         for (Asteroid asteroid : asteroids) {
             if (asteroid.collidesWith(playerX + playerTexture.getWidth() / 2f, playerY + playerTexture.getHeight() / 2f, playerRadius)) {
                 System.out.println("Player hit an asteroid!");
-                // Temporary response: reset position
                 playerX = Gdx.graphics.getWidth() / 2f - playerTexture.getWidth() / 2f;
                 playerY = Gdx.graphics.getHeight() / 2f - playerTexture.getHeight() / 2f;
                 velocityX = 0;
                 velocityY = 0;
                 lives--;
-                break;
+                if (lives <= 0) {
+                    ((Game) Gdx.app.getApplicationListener()).setScreen(new GameOverScreen((AsteroidsGame) Gdx.app.getApplicationListener(), score));
+                    return; // <---- immediately exit render() to avoid crashing
+                }
+                asteroidsToRemove.add(asteroid); // Remove asteroid after collision
             }
         }
-        if (lives <= 0) {
-            // Transition to the GameOverScreen
-            ((Game) Gdx.app.getApplicationListener()).setScreen(new GameOverScreen((AsteroidsGame) Gdx.app.getApplicationListener(), score));
-        }
-        //Bullet Hit Detection
-        List<Asteroid> asteroidsToRemove = new ArrayList<>();
-        List<Bullet> bulletsToRemove = new ArrayList<>();
 
+        // Bullet-asteroid collision
+        List<Bullet> bulletsToRemove = new ArrayList<>();
         for (Asteroid asteroid : asteroids) {
             for (Bullet bullet : bullets) {
                 float bulletCenterX = bullet.x + bulletTexture.getWidth() / 2f;
@@ -131,18 +132,28 @@ public class GameScreen implements Screen {
             }
         }
 
-// Remove them outside the loop
         asteroids.removeAll(asteroidsToRemove);
         bullets.removeAll(bulletsToRemove);
 
+        // Wave progression
+        if (asteroids.isEmpty() && !waveCleared) {
+            wave++;
+            startingAsteroids += 2; // Increase difficulty
+            spawnAsteroids(startingAsteroids);
+            waveCleared = true;
+        }
 
+        if (!asteroids.isEmpty()) {
+            waveCleared = false;
+        }
 
-        // Screen wrap
+        // Screen wrapping
         if (playerX < -playerTexture.getWidth()) playerX = Gdx.graphics.getWidth();
         if (playerX > Gdx.graphics.getWidth()) playerX = -playerTexture.getWidth();
         if (playerY < -playerTexture.getHeight()) playerY = Gdx.graphics.getHeight();
         if (playerY > Gdx.graphics.getHeight()) playerY = -playerTexture.getHeight();
 
+        // Rendering
         Gdx.gl.glClearColor(0, 0, 0.15f, 1);
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
 
@@ -150,12 +161,14 @@ public class GameScreen implements Screen {
         for (Asteroid a : asteroids) {
             a.render(batch);
         }
-        // Draw bullets
         for (Bullet bullet : bullets) {
             bullet.render(batch);
         }
 
-        font.draw(batch, "Score:"+score, 100, 100);
+        font.draw(batch, "Score: " + score, 20, Gdx.graphics.getHeight() - 20);
+        font.draw(batch, "Lives: " + lives, 20, Gdx.graphics.getHeight() - 50);
+        font.draw(batch, "Wave: " + wave, 20, Gdx.graphics.getHeight() - 80);
+
         batch.draw(
             playerTexture,
             playerX, playerY,
@@ -174,31 +187,25 @@ public class GameScreen implements Screen {
     }
 
     private void handleInput(float delta) {
-        // Rotate left
-        if (Gdx.input.isKeyPressed(Input.Keys.LEFT)) {
-            angle += rotationSpeed * delta;
+        float roll = mpuReader.getRoll();
+        float pitch = mpuReader.getPitch();
+
+        // Left/Right rotation based on Roll
+        float rollThreshold = 15f;
+        if (roll > rollThreshold) {
+            angle -= -rotationSpeed * delta;
+        } else if (roll < -rollThreshold) {
+            angle += -rotationSpeed * delta;
         }
 
-        // Rotate right
-        if (Gdx.input.isKeyPressed(Input.Keys.RIGHT)) {
-            angle -= rotationSpeed * delta;
-        }
-
-        // Thrust forward
-        if (Gdx.input.isKeyPressed(Input.Keys.UP)) {
+        // Forward thrust based on Pitch
+        float pitchThreshold = 10f;
+        if (pitch < -pitchThreshold) {
             float radians = (angle + 90) * MathUtils.degreesToRadians;
             velocityX += MathUtils.cos(radians) * thrustPower * delta;
             velocityY += MathUtils.sin(radians) * thrustPower * delta;
         }
 
-        // Reverse thrust
-        if (Gdx.input.isKeyPressed(Input.Keys.DOWN)) {
-            float radians = (angle + 90) * MathUtils.degreesToRadians;
-            velocityX -= MathUtils.cos(radians) * thrustPower * delta;
-            velocityY -= MathUtils.sin(radians) * thrustPower * delta;
-        }
-
-        //shoot bullet
         if (Gdx.input.isKeyPressed(Input.Keys.SPACE) && shootTimer <= 0f) {
             float bulletX = playerX + playerTexture.getWidth() / 2f - bulletTexture.getWidth() / 2f;
             float bulletY = playerY + playerTexture.getHeight() / 2f - bulletTexture.getHeight() / 2f;
@@ -208,29 +215,21 @@ public class GameScreen implements Screen {
     }
 
     @Override
-    public void resize(int width, int height) {
-    }
-
+    public void resize(int width, int height) {}
     @Override
-    public void pause() {
-    }
-
+    public void pause() {}
     @Override
-    public void resume() {
-    }
-
+    public void resume() {}
     @Override
-    public void hide() {
-    }
-
+    public void hide() {}
     @Override
     public void dispose() {
         batch.dispose();
         playerTexture.dispose();
-        asteroidTexture.dispose();
         bulletTexture.dispose();
-
-
+        font.dispose();
+        if (mpuReader != null) mpuReader.close();
     }
+
 }
 
